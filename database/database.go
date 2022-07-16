@@ -23,8 +23,5 @@ func ConnectDB() {
 	if err != nil {
 		panic("failed to connect database")
 	}
-
-	fmt.Println("Connection Opened to Database")
 	DB.AutoMigrate(&models.Product{}, &models.User{})
-	fmt.Println("Database Migrated")
 }
