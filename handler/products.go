@@ -11,7 +11,8 @@ func GetAllProduct(c *fiber.Ctx) error {
 
 	if err := database.DB.Debug().Find(&products).Error; err != nil {
 		return c.JSON(fiber.Map{
-			"error": err.Error(),
+			"status": "failed",
+			"error":  err.Error(),
 		})
 	}
 
@@ -35,6 +36,7 @@ func GetProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := database.DB.Debug().First(&products, id).Error; err != nil {
 		return c.JSON(fiber.Map{
+			"status":  "failed",
 			"message": "No product found with ID",
 			"error":   err.Error(),
 		})
@@ -43,5 +45,31 @@ func GetProduct(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "Product found",
 		"data":    products,
+	})
+}
+
+func CreateProduct(c *fiber.Ctx) error {
+	products := models.Product{}
+
+	if err := c.BodyParser(&products); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "failed",
+			"message": "bad request",
+			"error":   err,
+		})
+	}
+
+	if err := database.DB.Create(&products).Error; err != nil {
+		return c.JSON(fiber.Map{
+			"status":  "failed",
+			"message": "create product failed",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"status":   "success",
+		"messages": "create product success",
+		"data":     products,
 	})
 }
