@@ -49,14 +49,20 @@ func GetProduct(c *fiber.Ctx) error {
 }
 
 func CreateProduct(c *fiber.Ctx) error {
-	products := models.Product{}
+	productReq := models.ProductRequest{}
 
-	if err := c.BodyParser(&products); err != nil {
+	if err := c.BodyParser(&productReq); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "failed",
 			"message": "bad request",
 			"error":   err,
 		})
+	}
+
+	products := models.Product{
+		Title:       productReq.Title,
+		Description: productReq.Description,
+		Amount:      productReq.Amount,
 	}
 
 	if err := database.DB.Create(&products).Error; err != nil {
@@ -71,5 +77,72 @@ func CreateProduct(c *fiber.Ctx) error {
 		"status":   "success",
 		"messages": "create product success",
 		"data":     products,
+	})
+}
+
+func UpdateProduct(c *fiber.Ctx) error {
+	productReq := models.ProductRequest{}
+
+	if err := c.BodyParser(&productReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "failed",
+			"message": "bad request",
+			"error":   err,
+		})
+	}
+
+	id := c.Params("id")
+
+	var products models.Product
+
+	if err := database.DB.Debug().First(&products, "id = ?", id).Error; err != nil {
+		return c.JSON(fiber.Map{
+			"status":  "failed",
+			"message": "update product failed",
+			"error":   err.Error(),
+		})
+	}
+
+	products.Title = productReq.Title
+	products.Description = productReq.Description
+	products.Amount = productReq.Amount
+
+	if err := database.DB.Debug().Save(&products).Error; err != nil {
+		return c.JSON(fiber.Map{
+			"status":  "failed",
+			"message": "save product failed",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"status":   "success",
+		"messages": "update product success",
+		"data":     products,
+	})
+}
+
+func DeleteProduct(c *fiber.Ctx) error {
+	products := models.Product{}
+	id := c.Params("id")
+
+	if err := database.DB.Debug().First(&products, id).Error; err != nil {
+		return c.JSON(fiber.Map{
+			"status":  "failed",
+			"message": "No product found with ID",
+			"error":   err.Error(),
+		})
+	}
+
+	if err := database.DB.Debug().Delete(&products).Error; err != nil {
+		return c.JSON(fiber.Map{
+			"status":  "failed",
+			"message": "delete product failed",
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "delete product success",
 	})
 }
