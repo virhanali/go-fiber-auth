@@ -61,3 +61,35 @@ func GetUser(c *fiber.Ctx) error {
 		"data":    user,
 	})
 }
+
+func CreateUser(c *fiber.Ctx) error {
+	type NewUser struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+	}
+
+	db := database.DB
+	user := new(models.User)
+	if err := c.BodyParser(user); err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
+
+	}
+
+	hash, err := hashPassword(user.Password)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Couldn't hash password", "data": err})
+
+	}
+
+	user.Password = hash
+	if err := db.Create(&user).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Couldn't create user", "data": err})
+	}
+
+	newUser := NewUser{
+		Email:    user.Email,
+		Username: user.Username,
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "message": "Created user", "data": newUser})
+}

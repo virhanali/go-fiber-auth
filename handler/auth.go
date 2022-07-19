@@ -44,65 +44,55 @@ func getUserByUsername(u string) (*models.User, error) {
 
 func Login(c *fiber.Ctx) error {
 	input := models.LoginInput{}
-	data := models.UserData{}
+	ud := models.UserData{}
 
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
-			"message": "bad request login",
-			"data":    err,
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Error on login request", "data": err})
 	}
-
 	identity := input.Identity
 	pass := input.Password
 
 	email, err := getUserByEmail(identity)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  "error",
-			"message": "error on username",
-			"data":    err,
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Error on email", "data": err})
 	}
 
 	user, err := getUserByUsername(identity)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  "error",
-			"message": "error on email",
-			"data":    err,
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Error on username", "data": err})
+	}
+
+	if email == nil && user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "User not found", "data": err})
 	}
 
 	if email == nil {
-		data = models.UserData{
+		ud = models.UserData{
 			ID:       user.ID,
 			Username: user.Username,
 			Email:    user.Email,
 			Password: user.Password,
 		}
 	} else {
-		data = models.UserData{
+		ud = models.UserData{
 			ID:       email.ID,
 			Username: email.Username,
 			Email:    email.Email,
 			Password: email.Password,
 		}
 	}
-	if !CheckPasswordHash(pass, data.Password) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  "error",
-			"message": "invalid password",
-			"data":    nil,
-		})
+
+	if !CheckPasswordHash(pass, ud.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Invalid password", "data": nil})
 	}
 
-	token := jwt.New(jwt.SigningMethodES256)
+	token := jwt.New(jwt.SigningMethodHS256)
+
 	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = data.Username
-	claims["user_id"] = data.ID
+	claims["username"] = ud.Username
+	claims["user_id"] = ud.ID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
 	t, err := token.SignedString([]byte(config.Config("SECRET")))
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
